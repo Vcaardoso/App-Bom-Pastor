@@ -3,7 +3,6 @@ import { supabase } from './supabaseClient'
 import {
   Church,
   Calendar,
-  BookOpen,
   CheckCircle2,
   Heart,
   Clock,
@@ -13,13 +12,54 @@ import {
   ChevronLeft,
   ChevronRight,
   Send,
-  Users,
   ExternalLink,
   Megaphone,
   MessageCircle,
   Globe,
-  Share2
+  Share2,
+  ShieldCheck,
+  Download,
+  Copy,
+  Check,
+  QrCode,
+  Smartphone,
+  Search
 } from 'lucide-react'
+
+const COORDENADOR_EMAILS = ['coordenacaobp@gmail.com']
+
+const DIZIMO_CONFIG = {
+  favorecido: 'Paróquia Bom Pastor',
+  tipoChave: 'CNPJ',
+  chavePix: '00.000.000/0001-00', // Substitua pela chave Pix oficial da paróquia
+  mensagem:
+    'Sua contribuição sustenta a vida da comunidade, as obras pastorais e o cuidado com os que mais precisam.'
+}
+
+const APP_INSTALL_URL = 'https://paroquia-bom-pastor.vercel.app' // Substitua pelo link real da sua Vercel
+
+const VERSICULOS_PADRAO = [
+  { id: 'padrao-1', texto: 'O Senhor é o meu pastor; nada me faltará.', referencia: 'Salmo 23, 1' },
+  { id: 'padrao-2', texto: 'Vinde a mim, todos vós que estais cansados e oprimidos, e eu vos aliviarei.', referencia: 'Mateus 11, 28' },
+  { id: 'padrao-3', texto: 'Tudo posso naquele que me fortalece.', referencia: 'Filipenses 4, 13' },
+  { id: 'padrao-4', texto: 'Amai-vos uns aos outros como eu vos amei.', referencia: 'João 15, 12' },
+  { id: 'padrao-5', texto: 'O Senhor te abençoe e te guarde; o Senhor faça brilhar sobre ti a sua face.', referencia: 'Números 6, 24-25' },
+  { id: 'padrao-6', texto: 'Entrega o teu caminho ao Senhor, confia nele, e ele tudo fará.', referencia: 'Salmo 37, 5' },
+  { id: 'padrao-7', texto: 'A paz eu vos deixo, a minha paz eu vos dou.', referencia: 'João 14, 27' },
+  { id: 'padrao-8', texto: 'Sede fortes e corajosos, não tenhais medo.', referencia: 'Deuteronômio 31, 6' },
+  { id: 'padrao-9', texto: 'Onde dois ou três estiverem reunidos em meu nome, aí estou eu no meio deles.', referencia: 'Mateus 18, 20' },
+  { id: 'padrao-10', texto: 'A tua palavra é lâmpada para os meus passos e luz para o meu caminho.', referencia: 'Salmo 119, 105' },
+  { id: 'padrao-11', texto: 'Buscai primeiro o Reino de Deus e a sua justiça, e tudo isso vos será dado por acréscimo.', referencia: 'Mateus 6, 33' },
+  { id: 'padrao-12', texto: 'O Senhor é bom, um refúgio no dia da angústia.', referencia: 'Naum 1, 7' },
+  { id: 'padrao-13', texto: 'Alegrai-vos sempre no Senhor; repito: alegrai-vos.', referencia: 'Filipenses 4, 4' },
+  { id: 'padrao-14', texto: 'Eu sou o caminho, a verdade e a vida.', referencia: 'João 14, 6' },
+  { id: 'padrao-15', texto: 'Ainda que eu ande por um vale de sombra e morte, não temerei mal algum, porque tu estás comigo.', referencia: 'Salmo 23, 4' },
+  { id: 'padrao-16', texto: 'A fé sem obras é morta.', referencia: 'Tiago 2, 26' },
+  { id: 'padrao-17', texto: 'O amor é paciente, o amor é prestativo.', referencia: '1 Coríntios 13, 4' },
+  { id: 'padrao-18', texto: 'Felizes os que têm um coração puro, porque verão a Deus.', referencia: 'Mateus 5, 8' },
+  { id: 'padrao-19', texto: 'Não vos inquieteis pelo dia de amanhã, pois o dia de amanhã trará suas próprias preocupações.', referencia: 'Mateus 6, 34' },
+  { id: 'padrao-20', texto: 'Bendize, ó minha alma, ao Senhor, e não te esqueças de nenhum de seus benefícios.', referencia: 'Salmo 103, 2' }
+]
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -43,6 +83,7 @@ export default function App() {
   const [feedbackMsg, setFeedbackMsg] = useState('')
 
   const [inscricoesCat, setInscricoesCat] = useState([])
+  const [erroCatCoord, setErroCatCoord] = useState('')
   const [nomeCatequizando, setNomeCatequizando] = useState('')
   const [idadeCatequizando, setIdadeCatequizando] = useState('')
   const [etapaCatequese, setEtapaCatequese] = useState('Eucaristia (Infantil)')
@@ -52,7 +93,16 @@ export default function App() {
   const [enviandoCat, setEnviandoCat] = useState(false)
   const [sucessoCat, setSucessoCat] = useState('')
 
+  const [buscaCoord, setBuscaCoord] = useState('')
+  const [filtroEtapaCoord, setFiltroEtapaCoord] = useState('TODAS')
+
+  const [copiouPix, setCopiouPix] = useState(false)
   const [mesAtual, setMesAtual] = useState(new Date())
+
+  const isCoordenador = Boolean(
+    session?.user?.email &&
+      COORDENADOR_EMAILS.includes(session.user.email.trim().toLowerCase())
+  )
 
   const getHojeLocal = () => {
     const d = new Date()
@@ -85,12 +135,52 @@ export default function App() {
   }, [session])
 
   useEffect(() => {
+    if (!isCoordenador && activeTab === 'coord') {
+      setActiveTab('hoje')
+    }
+  }, [isCoordenador, activeTab])
+
+  useEffect(() => {
     setReflexaoTexto(presencaHoje?.reflexao || '')
   }, [presencaHoje])
 
+  async function carregarInscricoesCatequese() {
+    setErroCatCoord('')
+
+    let { data, error } = await supabase
+      .from('inscricoes_catequese')
+      .select('*')
+      .order('criado_em', { ascending: false })
+
+    if (error) {
+      const fallback = await supabase.from('inscricoes_catequese').select('*')
+      data = fallback.data
+      error = fallback.error
+    }
+
+    if (error) {
+      setErroCatCoord(error.message)
+      return
+    }
+
+    if (data) {
+      setInscricoesCat(data)
+    }
+  }
+
   async function carregarDados() {
     const { data: versData } = await supabase.from('versiculos').select('*')
-    if (versData) setVersiculos(versData)
+    if (versData && versData.length > 0) {
+      const textosExistentes = new Set(
+        versData.map((item) => (item.texto || '').trim().toLowerCase())
+      )
+      const extrasPadrao = VERSICULOS_PADRAO.filter(
+        (item) => !textosExistentes.has(item.texto.trim().toLowerCase())
+      )
+      setVersiculos([...versData, ...extrasPadrao])
+    } else {
+      setVersiculos(VERSICULOS_PADRAO)
+    }
 
     const { data: agendaData } = await supabase
       .from('agenda_igreja')
@@ -110,11 +200,7 @@ export default function App() {
       .order('data_presenca', { ascending: false })
     if (presData) setPresencas(presData)
 
-    const { data: catData } = await supabase
-      .from('inscricoes_catequese')
-      .select('*')
-      .order('criado_em', { ascending: false })
-    if (catData) setInscricoesCat(catData)
+    await carregarInscricoesCatequese()
   }
 
   async function handleAuth(e) {
@@ -231,6 +317,91 @@ export default function App() {
       setTimeout(() => setSucessoCat(''), 5000)
     }
   }
+
+  async function handleCopiarPix() {
+    try {
+      await navigator.clipboard.writeText(DIZIMO_CONFIG.chavePix)
+      setCopiouPix(true)
+      setTimeout(() => setCopiouPix(false), 2500)
+    } catch {
+      setCopiouPix(false)
+    }
+  }
+
+  function escaparCsv(valor) {
+    const texto = String(valor ?? '').replace(/"/g, '""')
+    return `"${texto}"`
+  }
+
+  function exportarInscricoesCsv() {
+    if (!isCoordenador || inscricoesFiltradas.length === 0) return
+
+    const cabecalho = [
+      'Catequizando',
+      'Idade',
+      'Etapa',
+      'Responsavel',
+      'WhatsApp',
+      'Observacao',
+      'Data Cadastro'
+    ]
+
+    const linhas = inscricoesFiltradas.map((item) => [
+      escaparCsv(item.nome_catequizando),
+      escaparCsv(item.idade),
+      escaparCsv(item.etapa),
+      escaparCsv(item.nome_responsavel),
+      escaparCsv(item.whatsapp),
+      escaparCsv(item.observacao),
+      escaparCsv(
+        item.criado_em ? new Date(item.criado_em).toLocaleDateString('pt-BR') : ''
+      )
+    ])
+
+    const conteudoCsv =
+      '\uFEFF' +
+      [cabecalho.map(escaparCsv).join(';'), ...linhas.map((l) => l.join(';'))].join('\n')
+
+    const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `catequese-inscricoes-${hojeStr}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const inscricoesFiltradas = inscricoesCat.filter((ins) => {
+    const bateEtapa =
+      filtroEtapaCoord === 'TODAS' || ins.etapa === filtroEtapaCoord
+    const termo = buscaCoord.trim().toLowerCase()
+    const bateBusca =
+      !termo ||
+      (ins.nome_catequizando || '').toLowerCase().includes(termo) ||
+      (ins.nome_responsavel || '').toLowerCase().includes(termo) ||
+      (ins.whatsapp || '').toLowerCase().includes(termo)
+    return bateEtapa && bateBusca
+  })
+
+  const getIndiceVersiculoDoDia = (total) => {
+    if (!total) return 0
+    const partes = hojeStr.split('-').map(Number)
+    const dataUtc = Date.UTC(partes[0], partes[1] - 1, partes[2])
+    const diasDesdeEpoca = Math.floor(dataUtc / 86400000)
+    return ((diasDesdeEpoca % total) + total) % total
+  }
+
+  const listaBaseVersiculos = versiculos.length > 0 ? versiculos : VERSICULOS_PADRAO
+
+  const versiculosDoDia = (() => {
+    if (listaBaseVersiculos.length <= 1) return listaBaseVersiculos
+    const idx = getIndiceVersiculoDoDia(listaBaseVersiculos.length)
+    const copia = [...listaBaseVersiculos]
+    const [destaque] = copia.splice(idx, 1)
+    return [destaque, ...copia]
+  })()
 
   const calcularEstatisticas = () => {
     const hoje = new Date()
@@ -391,11 +562,14 @@ export default function App() {
 
   const { naSemana, noMes } = calcularEstatisticas()
   const nomeUsuario = session.user.user_metadata?.nome || session.user.email.split('@')[0]
+  const qrCodeSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+    APP_INSTALL_URL
+  )}`
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] pb-24 max-w-md mx-auto relative shadow-xs">
-      <header className="px-6 pt-8 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <header className="px-6 pt-8 pb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-11 h-11 rounded-2xl bg-white border border-[#EAE2D6] flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-xs">
             <img
               src="/logo-bom-pastor.jpg"
@@ -403,22 +577,54 @@ export default function App() {
               className="w-full h-full object-contain"
             />
           </div>
-          <div>
-            <p className="text-xs text-[#8C6D53] font-medium uppercase tracking-wider">
+          <div className="min-w-0">
+            <p className="text-xs text-[#8C6D53] font-medium uppercase tracking-wider truncate">
               Paróquia Bom Pastor
             </p>
-            <h1 className="text-xl font-semibold text-[#2C2A29] capitalize">
+            <h1 className="text-xl font-semibold text-[#2C2A29] capitalize truncate">
               Paz e bem, {nomeUsuario}
             </h1>
           </div>
         </div>
-        <button
-          onClick={() => supabase.auth.signOut()}
-          title="Sair da conta"
-          className="p-2.5 rounded-full bg-white border border-[#EAE2D6] text-[#6E675F] hover:text-[#8C6D53] transition"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('instalar')}
+            title="QR Code e instalar app"
+            className={`p-2.5 rounded-full border transition ${
+              activeTab === 'instalar'
+                ? 'bg-[#8C6D53] border-[#8C6D53] text-white'
+                : 'bg-white border-[#EAE2D6] text-[#6E675F] hover:text-[#8C6D53]'
+            }`}
+          >
+            <QrCode className="w-4 h-4" />
+          </button>
+
+          {isCoordenador && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('coord')}
+              title="Painel da coordenação"
+              className={`p-2.5 rounded-full border transition ${
+                activeTab === 'coord'
+                  ? 'bg-[#5C6F68] border-[#5C6F68] text-white'
+                  : 'bg-white border-[#EAE2D6] text-[#5C6F68] hover:bg-[#5C6F68]/10'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => supabase.auth.signOut()}
+            title="Sair da conta"
+            className="p-2.5 rounded-full bg-white border border-[#EAE2D6] text-[#6E675F] hover:text-[#8C6D53] transition"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </header>
 
       {activeTab === 'hoje' && (
@@ -449,11 +655,16 @@ export default function App() {
             </div>
 
             <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1">
-              {versiculos.map((v) => (
+              {versiculosDoDia.map((v, idx) => (
                 <div
-                  key={v.id}
+                  key={v.id ?? `${v.referencia}-${idx}`}
                   className="snap-center shrink-0 w-[85%] bg-gradient-to-br from-[#8C6D53] to-[#6E533D] text-white p-5 rounded-3xl shadow-sm flex flex-col justify-between min-h-[150px]"
                 >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2.5 py-0.5 rounded-full bg-white/15 text-[#FAF7F2]">
+                      {idx === 0 ? 'Versículo de hoje' : 'Outras leituras'}
+                    </span>
+                  </div>
                   <p className="font-serif-verse italic text-base leading-relaxed text-[#FAF7F2]">
                     “{v.texto}”
                   </p>
@@ -497,6 +708,7 @@ export default function App() {
             </div>
 
             <button
+              type="button"
               onClick={togglePresencaHoje}
               className={`mt-4 w-full py-3.5 px-4 rounded-2xl font-medium text-sm flex items-center justify-center gap-2 transition ${
                 presencaHoje
@@ -659,7 +871,7 @@ export default function App() {
           <section className="bg-white p-5 rounded-3xl border border-[#EAE2D6] shadow-xs space-y-4">
             <div>
               <h3 className="text-base font-semibold text-[#2C2A29] flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#8C6D53]" />
+                <Church className="w-4 h-4 text-[#8C6D53]" />
                 Pré-cadastro na Catequese
               </h3>
               <p className="text-xs text-[#6E675F] mt-1">
@@ -770,30 +982,6 @@ export default function App() {
                 {enviandoCat ? 'Enviando...' : 'Enviar pré-cadastro'}
               </button>
             </form>
-
-            {inscricoesCat.length > 0 && (
-              <div className="pt-4 border-t border-[#EAE2D6] space-y-2">
-                <p className="text-xs font-semibold text-[#2C2A29]">
-                  Seus pré-cadastros enviados:
-                </p>
-                {inscricoesCat.map((ins) => (
-                  <div
-                    key={ins.id}
-                    className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EAE2D6] flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <p className="font-semibold text-[#2C2A29]">
-                        {ins.nome_catequizando} ({ins.idade} anos)
-                      </p>
-                      <p className="text-[#6E675F]">{ins.etapa}</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-[#5C6F68]/15 text-[#5C6F68] font-medium text-[11px]">
-                      Enviado ✓
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </section>
         </main>
       )}
@@ -803,6 +991,7 @@ export default function App() {
           <section className="bg-white p-5 rounded-3xl border border-[#EAE2D6] shadow-xs">
             <div className="flex items-center justify-between mb-4">
               <button
+                type="button"
                 onClick={() =>
                   setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1, 1))
                 }
@@ -817,6 +1006,7 @@ export default function App() {
                 })}
               </h3>
               <button
+                type="button"
                 onClick={() =>
                   setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 1))
                 }
@@ -841,96 +1031,291 @@ export default function App() {
                 item ? (
                   <div
                     key={idx}
-                    className={`aspect-square rounded-xl flex items-center justify-center text-xs font-medium ${
+                    className={`h-9 rounded-xl flex items-center justify-center text-xs font-medium ${
                       item.foi
-                        ? 'bg-[#8C6D53] text-white shadow-xs'
-                        : 'bg-[#FAF7F2] text-[#6E675F]'
+                        ? 'bg-[#5C6F68] text-white font-semibold'
+                        : item.dataFormatada === hojeStr
+                          ? 'bg-[#FAF7F2] border border-[#8C6D53] text-[#8C6D53] font-semibold'
+                          : 'text-[#2C2A29]'
                     }`}
                   >
                     {item.dia}
                   </div>
                 ) : (
-                  <div key={idx} />
+                  <div key={idx} className="h-9" />
                 )
               )}
             </div>
           </section>
 
-          <section className="space-y-3">
+          <section className="bg-white p-5 rounded-3xl border border-[#EAE2D6] shadow-xs space-y-3">
             <h3 className="text-sm font-semibold text-[#2C2A29] flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-[#8C6D53]" />
+              <Heart className="w-4 h-4 text-[#D4A373]" />
               Diário de Reflexões
             </h3>
-
-            {presencas.filter((p) => p.reflexao && p.reflexao.trim() !== '').length === 0 ? (
-              <div className="bg-white p-6 rounded-2xl border border-[#EAE2D6] text-center">
-                <p className="text-xs text-[#6E675F]">
-                  Suas reflexões pós-celebração aparecerão aqui para você reler sempre que quiser.
-                </p>
-              </div>
+            {presencas.filter((p) => p.reflexao).length === 0 ? (
+              <p className="text-xs text-[#6E675F]">
+                Nenhuma reflexão registrada ainda. Marque sua presença na aba Hoje para escrever.
+              </p>
             ) : (
-              presencas
-                .filter((p) => p.reflexao && p.reflexao.trim() !== '')
-                .map((p) => {
-                  const [ano, mes, dia] = p.data_presenca.split('-')
-                  return (
+              <div className="space-y-2.5">
+                {presencas
+                  .filter((p) => p.reflexao)
+                  .slice(0, 6)
+                  .map((p) => (
                     <div
                       key={p.id}
-                      className="bg-white p-4 rounded-2xl border border-[#EAE2D6] space-y-2"
+                      className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EAE2D6] space-y-1"
                     >
-                      <span className="text-[11px] font-semibold text-[#8C6D53] bg-[#FAF7F2] px-2.5 py-1 rounded-full">
-                        {dia}/{mes}/{ano}
-                      </span>
-                      <p className="text-sm text-[#2C2A29] leading-relaxed whitespace-pre-line">
-                        “{p.reflexao}”
+                      <p className="text-[11px] font-semibold text-[#8C6D53]">
+                        {p.data_presenca}
+                      </p>
+                      <p className="text-xs text-[#2C2A29] leading-relaxed">
+                        {p.reflexao}
                       </p>
                     </div>
-                  )
-                })
+                  ))}
+              </div>
             )}
           </section>
         </main>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-[#EAE2D6] px-4 py-2.5 flex justify-around items-center z-50">
+      {activeTab === 'dizimos' && (
+        <main className="px-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[#2C2A29]">Dízimos e Ofertas</h2>
+            <p className="text-xs text-[#6E675F] mt-0.5 leading-relaxed">
+              {DIZIMO_CONFIG.mensagem}
+            </p>
+          </div>
+
+          <section className="bg-white p-5 rounded-3xl border border-[#EAE2D6] shadow-xs space-y-4">
+            <div className="space-y-1.5">
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-[#8C6D53]">
+                Chave Pix ({DIZIMO_CONFIG.tipoChave})
+              </p>
+              <p className="text-sm font-semibold text-[#2C2A29]">
+                {DIZIMO_CONFIG.favorecido}
+              </p>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EAE2D6] text-xs font-mono text-[#2C2A29] break-all">
+                {DIZIMO_CONFIG.chavePix}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopiarPix}
+              className="w-full py-3.5 px-4 rounded-xl bg-[#8C6D53] hover:bg-[#775B44] text-white text-xs font-medium flex items-center justify-center gap-2 transition"
+            >
+              {copiouPix ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Chave Pix copiada!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copiar chave Pix
+                </>
+              )}
+            </button>
+          </section>
+        </main>
+      )}
+
+      {activeTab === 'instalar' && (
+        <main className="px-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[#2C2A29] flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-[#8C6D53]" />
+              Instalar Aplicativo
+            </h2>
+            <p className="text-xs text-[#6E675F] mt-0.5">
+              Escaneie o QR Code ou siga o passo a passo para manter o app na tela inicial.
+            </p>
+          </div>
+
+          <section className="bg-white p-5 rounded-3xl border border-[#EAE2D6] shadow-xs text-center space-y-3">
+            <img
+              src={qrCodeSrc}
+              alt="QR Code para abrir e instalar o app da Paróquia Bom Pastor"
+              className="w-48 h-48 mx-auto rounded-2xl border border-[#EAE2D6] p-2 bg-white"
+            />
+            <p className="text-[11px] text-[#6E675F] break-all">
+              Link do app:{' '}
+              <a
+                href={APP_INSTALL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#8C6D53] underline font-medium"
+              >
+                {APP_INSTALL_URL}
+              </a>
+            </p>
+          </section>
+
+          <section className="bg-white p-5 rounded-3xl border border-[#EAE2D6] shadow-xs space-y-3">
+            <h3 className="text-sm font-semibold text-[#2C2A29] flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-[#5C6F68]" />
+              Como instalar no celular
+            </h3>
+            <p className="text-xs text-[#4A453E] leading-relaxed">
+              <strong className="text-[#2C2A29]">Android (Chrome):</strong> Abra o link no Chrome, toque nos três pontinhos (⋮) e escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.
+            </p>
+            <p className="text-xs text-[#4A453E] leading-relaxed">
+              <strong className="text-[#2C2A29]">iPhone (Safari):</strong> Abra o link no Safari, toque em <strong>Compartilhar</strong> e escolha <strong>Adicionar à Tela de Início</strong>.
+            </p>
+          </section>
+        </main>
+      )}
+
+      {activeTab === 'coord' && isCoordenador && (
+        <main className="px-6 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-[#2C2A29] flex items-center gap-1.5">
+                <ShieldCheck className="w-5 h-5 text-[#8C6D53]" />
+                Coordenação Catequese
+              </h2>
+              <p className="text-xs text-[#6E675F]">
+                {inscricoesFiltradas.length} cadastro(s) exibido(s)
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={exportarInscricoesCsv}
+              disabled={inscricoesFiltradas.length === 0}
+              className="px-3.5 py-2.5 rounded-xl bg-[#5C6F68] hover:bg-[#4B5B55] text-white text-xs font-medium flex items-center gap-1.5 transition disabled:opacity-40 shrink-0"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Exportar CSV
+            </button>
+          </div>
+
+          {erroCatCoord && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-2xl text-xs">
+              Não foi possível carregar as inscrições: {erroCatCoord}
+            </div>
+          )}
+
+          <section className="bg-white p-4 rounded-2xl border border-[#EAE2D6] space-y-2.5">
+            <div className="relative">
+              <Search className="w-4 h-4 text-[#8E867E] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={buscaCoord}
+                onChange={(e) => setBuscaCoord(e.target.value)}
+                placeholder="Buscar por catequizando, responsável ou WhatsApp"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#EAE2D6] text-xs focus:outline-none focus:border-[#8C6D53]"
+              />
+            </div>
+
+            <select
+              value={filtroEtapaCoord}
+              onChange={(e) => setFiltroEtapaCoord(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#EAE2D6] text-xs focus:outline-none focus:border-[#8C6D53]"
+            >
+              <option value="TODAS">Todas as etapas</option>
+              <option value="Eucaristia (Infantil)">Eucaristia (Infantil)</option>
+              <option value="Perseverança">Perseverança</option>
+              <option value="Crisma (Jovens)">Crisma (Jovens)</option>
+              <option value="Catequese de Adultos">Catequese de Adultos</option>
+            </select>
+          </section>
+
+          <section className="space-y-2.5">
+            {inscricoesFiltradas.length === 0 ? (
+              <div className="bg-white p-5 rounded-2xl border border-[#EAE2D6] text-center text-xs text-[#6E675F]">
+                Nenhuma inscrição encontrada com o filtro atual.
+              </div>
+            ) : (
+              inscricoesFiltradas.map((ins) => (
+                <div
+                  key={ins.id}
+                  className="bg-white p-4 rounded-2xl border border-[#EAE2D6] space-y-1 text-xs"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-sm text-[#2C2A29]">
+                      {ins.nome_catequizando}
+                    </p>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#FAF7F2] border border-[#EAE2D6] text-[#8C6D53] font-semibold text-[11px]">
+                      {ins.idade} anos
+                    </span>
+                  </div>
+                  <p className="text-[#8C6D53] font-medium">{ins.etapa}</p>
+                  {ins.nome_responsavel && (
+                    <p className="text-[#6E675F]">
+                      Responsável: <strong className="text-[#2C2A29]">{ins.nome_responsavel}</strong>
+                    </p>
+                  )}
+                  <p className="text-[#6E675F]">
+                    WhatsApp: <strong className="text-[#2C2A29]">{ins.whatsapp}</strong>
+                  </p>
+                  {ins.observacao && (
+                    <p className="text-[#6E675F]">Obs.: {ins.observacao}</p>
+                  )}
+                </div>
+              ))
+            )}
+          </section>
+        </main>
+      )}
+
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur border-t border-[#EAE2D6] px-3 py-2 flex items-center justify-between">
         <button
+          type="button"
           onClick={() => setActiveTab('hoje')}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[11px] font-medium transition ${
             activeTab === 'hoje' ? 'text-[#8C6D53]' : 'text-[#8E867E]'
           }`}
         >
-          <Church className="w-5 h-5" />
+          <Sparkles className="w-4 h-4" />
           <span>Hoje</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('agenda')}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[11px] font-medium transition ${
             activeTab === 'agenda' ? 'text-[#8C6D53]' : 'text-[#8E867E]'
           }`}
         >
-          <Calendar className="w-5 h-5" />
-          <span>Horários</span>
+          <Clock className="w-4 h-4" />
+          <span>Agenda</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('paroquia')}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[11px] font-medium transition ${
             activeTab === 'paroquia' ? 'text-[#8C6D53]' : 'text-[#8E867E]'
           }`}
         >
-          <Users className="w-5 h-5" />
+          <Church className="w-4 h-4" />
           <span>Paróquia</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('caminhada')}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[11px] font-medium transition ${
             activeTab === 'caminhada' ? 'text-[#8C6D53]' : 'text-[#8E867E]'
           }`}
         >
-          <BookOpen className="w-5 h-5" />
+        <Calendar className="w-4 h-4" />
           <span>Caminhada</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('dizimos')}
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl text-[11px] font-medium transition ${
+            activeTab === 'dizimos' ? 'text-[#8C6D53]' : 'text-[#8E867E]'
+          }`}
+        >
+          <Heart className="w-4 h-4" />
+          <span>Dízimos</span>
         </button>
       </nav>
     </div>
