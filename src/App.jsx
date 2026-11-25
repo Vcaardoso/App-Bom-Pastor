@@ -23,7 +23,9 @@ import {
   Check,
   QrCode,
   Smartphone,
-  Search
+  Search,
+  Plus,
+  Trash2
 } from 'lucide-react'
 
 const COORDENADOR_EMAILS = ['coordenacaobp@gmail.com']
@@ -95,6 +97,24 @@ export default function App() {
 
   const [buscaCoord, setBuscaCoord] = useState('')
   const [filtroEtapaCoord, setFiltroEtapaCoord] = useState('TODAS')
+
+  const [novaAgenda, setNovaAgenda] = useState({
+    dia_semana: '',
+    horario: '',
+    celebrante: '',
+    observacao: ''
+  })
+  const [adicionandoAgenda, setAdicionandoAgenda] = useState(false)
+
+  const [editandoAgendaId, setEditandoAgendaId] = useState(null)
+  const [formAgenda, setFormAgenda] = useState({
+    dia_semana: '',
+    horario: '',
+    celebrante: '',
+    observacao: ''
+  })
+  const [salvandoAgenda, setSalvandoAgenda] = useState(false)
+  const [msgAgenda, setMsgAgenda] = useState('')
 
   const [copiouPix, setCopiouPix] = useState(false)
   const [mesAtual, setMesAtual] = useState(new Date())
@@ -201,6 +221,114 @@ export default function App() {
     if (presData) setPresencas(presData)
 
     await carregarInscricoesCatequese()
+  }
+
+  async function adicionarAgenda(e) {
+    e.preventDefault()
+    if (!isCoordenador) return
+    setAdicionandoAgenda(true)
+    setMsgAgenda('')
+
+    const proximaOrdem =
+      agenda.length > 0
+        ? Math.max(...agenda.map((item) => Number(item.ordem) || 0)) + 1
+        : 1
+
+    const { data, error } = await supabase
+      .from('agenda_igreja')
+      .insert({
+        dia_semana: novaAgenda.dia_semana.trim(),
+        horario: novaAgenda.horario.trim(),
+        celebrante: novaAgenda.celebrante.trim(),
+        observacao: novaAgenda.observacao.trim(),
+        ordem: proximaOrdem
+      })
+      .select()
+      .single()
+
+    setAdicionandoAgenda(false)
+
+    if (error) {
+      setMsgAgenda(`Erro ao adicionar: ${error.message}`)
+      return
+    }
+
+    if (data) {
+      setAgenda((prev) => [...prev, data])
+      setNovaAgenda({
+        dia_semana: '',
+        horario: '',
+        celebrante: '',
+        observacao: ''
+      })
+      setMsgAgenda('Nova celebração adicionada à agenda!')
+      setTimeout(() => setMsgAgenda(''), 3000)
+    }
+  }
+
+  function iniciarEdicaoAgenda(item) {
+    setEditandoAgendaId(item.id)
+    setMsgAgenda('')
+    setFormAgenda({
+      dia_semana: item.dia_semana || '',
+      horario: item.horario || '',
+      celebrante: item.celebrante || '',
+      observacao: item.observacao || ''
+    })
+  }
+
+  function cancelarEdicaoAgenda() {
+    setEditandoAgendaId(null)
+    setMsgAgenda('')
+  }
+
+  async function salvarEdicaoAgenda(e, id) {
+    e.preventDefault()
+    if (!isCoordenador) return
+    setSalvandoAgenda(true)
+    setMsgAgenda('')
+
+    const { data, error } = await supabase
+      .from('agenda_igreja')
+      .update({
+        dia_semana: formAgenda.dia_semana.trim(),
+        horario: formAgenda.horario.trim(),
+        celebrante: formAgenda.celebrante.trim(),
+        observacao: formAgenda.observacao.trim()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    setSalvandoAgenda(false)
+
+    if (error) {
+      setMsgAgenda(`Erro ao salvar: ${error.message}`)
+      return
+    }
+
+    if (data) {
+      setAgenda((prev) => prev.map((item) => (item.id === id ? data : item)))
+      setEditandoAgendaId(null)
+      setMsgAgenda('Agenda atualizada com sucesso!')
+      setTimeout(() => setMsgAgenda(''), 3000)
+    }
+  }
+
+  async function excluirAgenda(id) {
+    if (!isCoordenador) return
+    if (!window.confirm('Deseja remover esta celebração da agenda?')) return
+
+    const { error } = await supabase.from('agenda_igreja').delete().eq('id', id)
+    if (error) {
+      setMsgAgenda(`Erro ao remover: ${error.message}`)
+      return
+    }
+
+    setAgenda((prev) => prev.filter((item) => item.id !== id))
+    if (editandoAgendaId === id) setEditandoAgendaId(null)
+    setMsgAgenda('Celebração removida da agenda.')
+    setTimeout(() => setMsgAgenda(''), 3000)
   }
 
   async function handleAuth(e) {
@@ -1171,15 +1299,15 @@ export default function App() {
       )}
 
       {activeTab === 'coord' && isCoordenador && (
-        <main className="px-6 space-y-4">
+        <main className="px-6 space-y-5">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-semibold text-[#2C2A29] flex items-center gap-1.5">
                 <ShieldCheck className="w-5 h-5 text-[#8C6D53]" />
-                Coordenação Catequese
+                Coordenação
               </h2>
               <p className="text-xs text-[#6E675F]">
-                {inscricoesFiltradas.length} cadastro(s) exibido(s)
+                Gerenciar celebrações e inscrições da catequese
               </p>
             </div>
 
@@ -1194,6 +1322,236 @@ export default function App() {
             </button>
           </div>
 
+          <section className="bg-white p-4 rounded-2xl border border-[#EAE2D6] space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-[#2C2A29]">
+                Dias, Horários e Celebrantes
+              </h3>
+              <p className="text-xs text-[#6E675F]">
+                Adicione, edite ou remova celebrações exibidas na aba Agenda
+              </p>
+            </div>
+
+            {msgAgenda && (
+              <p className="text-xs font-medium text-[#5C6F68] bg-[#5C6F68]/10 p-2.5 rounded-xl">
+                {msgAgenda}
+              </p>
+            )}
+
+            <form
+              onSubmit={adicionarAgenda}
+              className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EAE2D6] space-y-2.5 text-xs"
+            >
+              <p className="font-semibold text-[#2C2A29] flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5 text-[#8C6D53]" />
+                Adicionar novo dia ou horário
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                    Dia da semana
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={novaAgenda.dia_semana}
+                    onChange={(e) =>
+                      setNovaAgenda({ ...novaAgenda, dia_semana: e.target.value })
+                    }
+                    placeholder="Ex: Sábado"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                    Horário
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={novaAgenda.horario}
+                    onChange={(e) =>
+                      setNovaAgenda({ ...novaAgenda, horario: e.target.value })
+                    }
+                    placeholder="Ex: 18:00"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                  Celebrante / Pastor
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={novaAgenda.celebrante}
+                  onChange={(e) =>
+                    setNovaAgenda({ ...novaAgenda, celebrante: e.target.value })
+                  }
+                  placeholder="Nome do padre ou pastor"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                  Observação (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={novaAgenda.observacao}
+                  onChange={(e) =>
+                    setNovaAgenda({ ...novaAgenda, observacao: e.target.value })
+                  }
+                  placeholder="Ex: Missa da Família"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={adicionandoAgenda}
+                className="w-full py-2.5 rounded-xl bg-[#8C6D53] hover:bg-[#775B44] text-white font-medium transition disabled:opacity-50"
+              >
+                {adicionandoAgenda ? 'Adicionando...' : 'Adicionar celebração'}
+              </button>
+            </form>
+
+            <div className="space-y-2.5">
+              {agenda.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EAE2D6] space-y-2.5"
+                >
+                  {editandoAgendaId === item.id ? (
+                    <form
+                      onSubmit={(e) => salvarEdicaoAgenda(e, item.id)}
+                      className="space-y-2.5 text-xs"
+                    >
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                            Dia da semana
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formAgenda.dia_semana}
+                            onChange={(e) =>
+                              setFormAgenda({ ...formAgenda, dia_semana: e.target.value })
+                            }
+                            placeholder="Ex: Domingo"
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                            Horário
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formAgenda.horario}
+                            onChange={(e) =>
+                              setFormAgenda({ ...formAgenda, horario: e.target.value })
+                            }
+                            placeholder="Ex: 08:00"
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                          Celebrante / Pastor
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formAgenda.celebrante}
+                          onChange={(e) =>
+                            setFormAgenda({ ...formAgenda, celebrante: e.target.value })
+                          }
+                          placeholder="Nome do padre ou pastor"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#6E675F] mb-1">
+                          Observação (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={formAgenda.observacao}
+                          onChange={(e) =>
+                            setFormAgenda({ ...formAgenda, observacao: e.target.value })
+                          }
+                          placeholder="Ex: Celebração da Manhã"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-[#EAE2D6]"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={cancelarEdicaoAgenda}
+                          className="px-3 py-1.5 rounded-xl border border-[#EAE2D6] bg-white text-[#6E675F] font-medium"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={salvandoAgenda}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#8C6D53] text-white font-medium disabled:opacity-50"
+                        >
+                          {salvandoAgenda ? 'Salvando...' : 'Salvar'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2 text-xs">
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-[#2C2A29]">
+                          {item.dia_semana} • {item.horario}
+                        </p>
+                        <p className="text-[#6E675F]">
+                          Celebrante: <strong className="text-[#2C2A29]">{item.celebrante}</strong>
+                        </p>
+                        {item.observacao && (
+                          <p className="text-[#6E675F]">Obs.: {item.observacao}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => iniciarEdicaoAgenda(item)}
+                          className="px-3 py-1.5 rounded-xl bg-white border border-[#EAE2D6] text-[#8C6D53] font-medium hover:bg-[#8C6D53] hover:text-white transition"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => excluirAgenda(item.id)}
+                          title="Remover celebração"
+                          className="p-1.5 rounded-xl bg-white border border-[#EAE2D6] text-red-600 hover:bg-red-50 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
           {erroCatCoord && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-2xl text-xs">
               Não foi possível carregar as inscrições: {erroCatCoord}
@@ -1201,6 +1559,15 @@ export default function App() {
           )}
 
           <section className="bg-white p-4 rounded-2xl border border-[#EAE2D6] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#2C2A29]">
+                Inscrições da Catequese
+              </h3>
+              <span className="text-xs text-[#6E675F]">
+                {inscricoesFiltradas.length} cadastro(s)
+              </span>
+            </div>
+
             <div className="relative">
               <Search className="w-4 h-4 text-[#8E867E] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -1304,9 +1671,10 @@ export default function App() {
             activeTab === 'caminhada' ? 'text-[#8C6D53]' : 'text-[#8E867E]'
           }`}
         >
-        <Calendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4" />
           <span>Caminhada</span>
         </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('dizimos')}
