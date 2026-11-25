@@ -49,9 +49,3 @@ O projeto utiliza as seguintes tabelas no schema `public`:
 
 ---
 
-## 🚀 Como Executar Localmente
-
-1. **Clone o repositório:**
-   ```bash
-   git clone <url-do-seu-repositorio>
-   cd "APP B P"
