@@ -1,0 +1,18 @@
+{
+  "name": "Paróquia Bom Pastor",
+  "short_name": "Bom Pastor",
+  "description": "Espaço diário de fé, horários, canais da paróquia, catequese e caminhada.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF7F2",
+  "theme_color": "#FAF7F2",
+  "icons": [
+    {
+      "src": "/logo-bom-pastor.jpg",
+      "sizes": "1000x1000",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
