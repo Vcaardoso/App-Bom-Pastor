@@ -38,7 +38,7 @@ const DIZIMO_CONFIG = {
     'Sua contribuição sustenta a vida da comunidade, as obras pastorais e o cuidado com os que mais precisam.'
 }
 
-const APP_INSTALL_URL = 'https://paroquia-bom-pastor.vercel.app' // Substitua pelo link real da sua Vercel
+const APP_INSTALL_URL = 'https://app-bom-pastor.vercel.app/' // Substitua pelo link real da sua Vercel
 
 const VERSICULOS_PADRAO = [
   { id: 'padrao-1', texto: 'O Senhor é o meu pastor; nada me faltará.', referencia: 'Salmo 23, 1' },
