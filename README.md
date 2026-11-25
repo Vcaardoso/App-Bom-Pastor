@@ -1,20 +1,57 @@
-<<<<<<< HEAD
-# React + Vite
+# ⛪ Paróquia Bom Pastor — Aplicativo Comunitário (PWA)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Aplicação web progressiva (PWA) desenvolvida para aproximar os fiéis e apoiar a gestão pastoral da **Paróquia Bom Pastor**. O aplicativo reúne palavra diária, agenda de celebrações, acompanhamento de presença e reflexões, canais oficiais, pré-cadastro na catequese, contribuição via Pix e um painel administrativo exclusivo para a coordenação.
 
-Currently, two official plugins are available:
+🔗 **Aplicação no ar:** [https://app-bom-pastor.vercel.app/](https://app-bom-pastor.vercel.app/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✨ Funcionalidades
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Para os Fiéis
+* **Palavra do Dia (Rotação Automática):** Carrossel de versículos bíblicos que alterna automaticamente o versículo principal todos os dias com base na data local do dispositivo, combinando registros do banco de dados com uma lista padrão de 20 versículos.
+* **Avisos Paroquiais:** Exibição de comunicados ativos na tela inicial.
+* **Presença e Diário de Reflexões:** Check-in diário de participação nas celebrações com campo para registrar reflexões pessoais após a missa.
+* **Caminhada Espiritual:** Calendário mensal visual com os dias de presença marcados, estatísticas semanais/mensais e histórico das últimas reflexões escritas.
+* **Agenda de Celebrações:** Consulta rápida dos dias da semana, horários, observações e celebrantes/pastores responsáveis.
+* **Canais Oficiais e Catequese:** Acesso direto ao Canal do WhatsApp, Instagram e Facebook da paróquia, além de formulário de pré-cadastro para turmas de catequese (Eucaristia Infantil, Perseverança, Crisma e Adultos).
+* **Dízimos e Ofertas:** Exibição dos dados da paróquia com botão de cópia rápida da chave Pix.
+* **Instalação via QR Code:** Tela dedicada com QR Code e instruções para instalar o app na tela inicial no Android (Chrome) e iPhone (Safari).
 
-## Expanding the Oxlint configuration
+### Para a Coordenação (`coordenacaobp@gmail.com`)
+* **Gestão Completa da Agenda:** Adicionar novas celebrações, editar dias, horários, celebrantes/pastores e observações, ou remover horários diretamente pelo aplicativo.
+* **Gestão da Catequese:** Visualização dos pré-cadastros realizados, busca por nome/responsável/WhatsApp, filtro por etapa e exportação da lista completa em formato `.csv` (compatível com Excel).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
-=======
-# App-Bom-Pastor
->>>>>>> ad4a85cbd51c1713104220ae0c78782a5bb8da93
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+* **Frontend:** React + Vite
+* **Estilização e Ícones:** Tailwind CSS + Lucide React
+* **Backend e Banco de Dados:** Supabase (Auth + PostgreSQL com Row Level Security)
+* **Hospedagem e Deploy Contínuo:** Vercel
+
+---
+
+## 🗄️ Estrutura do Banco de Dados (Supabase)
+
+O projeto utiliza as seguintes tabelas no schema `public`:
+
+| Tabela | Finalidade |
+| :--- | :--- |
+| `versiculos` | Armazena versículos personalizados cadastrados pela paróquia. |
+| `agenda_igreja` | Guarda `dia_semana`, `horario`, `celebrante`, `observacao` e `ordem`. |
+| `avisos_paroquia` | Comunicados exibidos no topo da aba **Hoje** (`ativo = true`). |
+| `presencas` | Registra `user_id`, `data_presenca` e `reflexao` de cada fiel. |
+| `inscricoes_catequese` | Armazena os dados de pré-cadastro enviados na aba **Paróquia**. |
+
+> **Segurança (RLS):** A tabela `agenda_igreja` permite leitura (`SELECT`) pública/autenticada e restringe operações de escrita (`INSERT`, `UPDATE`, `DELETE`) ao e-mail institucional da coordenação (`coordenacaobp@gmail.com`).
+
+---
+
+## 🚀 Como Executar Localmente
+
+1. **Clone o repositório:**
+   ```bash
+   git clone <url-do-seu-repositorio>
+   cd "APP B P"
