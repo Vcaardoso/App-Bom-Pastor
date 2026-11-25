@@ -18,7 +18,7 @@ Aplicação web progressiva (PWA) desenvolvida para aproximar os fiéis e apoiar
 * **Dízimos e Ofertas:** Exibição dos dados da paróquia com botão de cópia rápida da chave Pix.
 * **Instalação via QR Code:** Tela dedicada com QR Code e instruções para instalar o app na tela inicial no Android (Chrome) e iPhone (Safari).
 
-### Para a Coordenação (`coordenacaobp@gmail.com`)
+### Para a Coordenação 
 * **Gestão Completa da Agenda:** Adicionar novas celebrações, editar dias, horários, celebrantes/pastores e observações, ou remover horários diretamente pelo aplicativo.
 * **Gestão da Catequese:** Visualização dos pré-cadastros realizados, busca por nome/responsável/WhatsApp, filtro por etapa e exportação da lista completa em formato `.csv` (compatível com Excel).
 
